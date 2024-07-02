@@ -405,7 +405,30 @@ def schedule_by_route(request, def_date, route_id, trip):
         'totale_bottle':totale_bottle })
     
 
+# old code starting for find customers
+# def find_customers(request, def_date, route_id):
+    # date_str = def_date
+    # if date_str:
+    #     date = datetime.strptime(date_str, '%Y-%m-%d')
+    #     day_of_week = date.strftime('%A')
+    #     week_num = (date.day - 1) // 7 + 1
+    #     week_number = f'Week{week_num}'
+    # route = RouteMaster.objects.get(route_id=route_id)
 
+    # van_route = Van_Routes.objects.filter(routes=route).first()
+    # if van_route:
+    #     van_capacity = van_route.van.capacity
+    # else:
+    #     van_capacity = 200
+    # todays_customers = []
+
+    # buildings = []
+    # for customer in Customers.objects.filter(routes = route):
+    #     if customer.visit_schedule and day_of_week in customer.visit_schedule and week_number in customer.visit_schedule[day_of_week]:
+    #         todays_customers.append(customer)
+    #         if customer.building_name not in buildings:
+    #             buildings.append(customer.building_name)
+# new starting code for find customers
 def find_customers(request, def_date, route_id):
     date_str = def_date
     if date_str:
@@ -423,11 +446,13 @@ def find_customers(request, def_date, route_id):
     todays_customers = []
 
     buildings = []
-    for customer in Customers.objects.filter(routes = route):
-        if customer.visit_schedule and day_of_week in customer.visit_schedule and week_number in customer.visit_schedule[day_of_week]:
-            todays_customers.append(customer)
-            if customer.building_name not in buildings:
-                buildings.append(customer.building_name)
+    for customer in Customers.objects.filter(routes=route):
+        if customer.visit_schedule:
+            for day, weeks in customer.visit_schedule.items():
+                if week_number in str(weeks):
+                    if str(day_of_week) in day:
+                        todays_customers.append(customer)
+                        buildings.append(customer.building_name)
 
     # Customers on vacation
     date = datetime.strptime(def_date, '%Y-%m-%d').date()
@@ -1256,32 +1281,35 @@ def EditBottleAllocation(request, route_id=None):
 
     return render(request, 'van_management/edit_bottle_allocation.html', context)
 
-
 def VansRouteBottleCount(request):
     date = request.GET.get('date')
-    print(date,'date')
+    print(date, 'date')
     if date:
         date = datetime.strptime(date, '%Y-%m-%d').date()
     else:
         date = datetime.today().date()
+
     van_details = []
 
-    if date:
-        van_product_stocks = VanProductStock.objects.filter(created_date=date)
-        print("van_product_stocks",van_product_stocks)
-        for stock in van_product_stocks:
-            van = stock.van
-            route_name = van.get_van_route() if van else 'No route'
-            bottle_count = stock.stock
-            van_details.append({
-                'route': route_name,
-                'bottle_count': bottle_count,
-                'van_id': van.van_id
-            })
+    all_vans = Van.objects.all()
+    for van in all_vans:
+        # Get the van's route, default to 'No route' if none found
+        van_route = Van_Routes.objects.filter(van=van).first()
+        route_name = van_route.routes.route_name if van_route else 'No route'
+        
+        # Get the bottle count directly from the Van model
+        bottle_count = van.bottle_count
+
+        van_details.append({
+            'route': route_name,
+            'bottle_count': bottle_count,
+            'van_id': van.van_id
+        })
 
     context = {
         'van_details': van_details,
         'date': date,
+        # 'all_vans' :all_vans
     }
     return render(request, 'van_management/van_route_bottle_count.html', context)
 

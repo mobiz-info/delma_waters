@@ -30,8 +30,10 @@ class Command(BaseCommand):
                     amout_total=out_amount.amount,
                     amout_recieved=0,
                     customer=out_amount.customer_outstanding.customer,
-                    reference_no="oustading added from backend"
+                    reference_no=f"oustading added from backend {out_amount.customer_outstanding.customer.custom_id}"
                 )
+                outstanding.invoice_no = invoice.invoice_no
+                outstanding.save()
                 
                 if out_amount.customer_outstanding.customer.sales_type == "CREDIT":
                     invoice.invoice_type = "credit_invoive"
@@ -47,5 +49,7 @@ class Command(BaseCommand):
                     invoice=invoice,
                     remarks='invoice genereted from backend reference no : ' + invoice.reference_no
                 )
+                
+                oustandings.invoice_no = invoice.invoice_no
 
         self.stdout.write(self.style.SUCCESS('Successfully updated visit schedule for customers with visit_schedule="Saturday"'))

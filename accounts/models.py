@@ -51,6 +51,11 @@ class CustomUser(AbstractUser):
     van_management = models.BooleanField(default=True)
     coupon_management = models.BooleanField(default=True)
     client_management = models.BooleanField(default=True)
+    nationality = models.TextField(null=True,blank=True)
+    visa_type = models.CharField(max_length=50, null=True, blank=True)
+    joining_date = models.DateTimeField(null=True, blank=True)
+    passport_expiry = models.DateTimeField(null=True, blank=True)
+    passport_number = models.CharField(max_length=50, null=True, blank=True)
     #class Meta:
     #    ordering = ('username',)
 
@@ -174,3 +179,15 @@ class Send_Notification(models.Model):
     device_token = models.CharField(null=True,max_length=1024)
     user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL,null=True)
     created_on = models.DateTimeField(auto_now=True)
+
+class Notification(models.Model):
+    noticication_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_on = models.DateTimeField(auto_now=True)
+    device_token = models.CharField(null=True,max_length=1024)
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL,null=True)
+    title = models.CharField(null=True,max_length=1024)
+    body = models.CharField(null=True,max_length=1024)
+
+
+    class Meta:
+        ordering = ('-created_on',)
