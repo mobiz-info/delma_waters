@@ -429,40 +429,191 @@ def schedule_by_route(request, def_date, route_id, trip):
     #         if customer.building_name not in buildings:
     #             buildings.append(customer.building_name)
 # new starting code for find customers
+# def find_customers(request, def_date, route_id):
+#     date_str = def_date
+#     if date_str:
+#         date = datetime.strptime(date_str, '%Y-%m-%d')
+#         day_of_week = date.strftime('%A')
+#         week_num = (date.day - 1) // 7 + 1
+#         week_number = f'Week{week_num}'
+#     route = RouteMaster.objects.get(route_id=route_id)
+
+#     van_route = Van_Routes.objects.filter(routes=route).first()
+#     if van_route:
+#         van_capacity = van_route.van.capacity
+#     else:
+#         van_capacity = 200
+#     todays_customers = []
+
+#     buildings = []
+#     for customer in Customers.objects.filter(routes=route):
+#         if customer.visit_schedule:
+#             for day, weeks in customer.visit_schedule.items():
+#                 if day in str(day_of_week):
+#                     if week_number in str(weeks):
+#                         todays_customers.append(customer)
+#                         buildings.append(customer.building_name)
+                        
+#     # Customers on vacation
+#     date = datetime.strptime(def_date, '%Y-%m-%d').date()
+#     for vacation in Vacation.objects.all():
+#         if vacation.start_date <= date <= vacation.end_date:
+#             if vacation.customer in todays_customers:
+#                 todays_customers.remove(vacation.customer)
+
+#     # Emergency customer
+#     special_customers = DiffBottlesModel.objects.filter(delivery_date = date)
+#     emergency_customers = []
+#     for client in special_customers:
+#         if client.customer in todays_customers:
+#             emergency_customers.append(client.customer)
+#         else:
+#             if client.customer.routes == route:
+#                 todays_customers.append(client.customer)
+#                 emergency_customers.append(client.customer)
+#                 if client.customer.building_name not in buildings:
+#                     buildings.append(client.customer.building_name)
+#     co = 0
+#     for cus in todays_customers:
+#         if cus.no_of_bottles_required:
+#             co+=cus.no_of_bottles_required
+#     # print(route,co)
+    
+#     if not len(buildings) == 0:
+#         building_count = {}
+
+#         for building in buildings:
+#             for customer in todays_customers:
+#                 if customer.building_name == building:
+#                     if building in building_count:
+#                         building_count[building] += customer.no_of_bottles_required
+#                     else:
+#                         building_count[building] = customer.no_of_bottles_required
+
+#         building_gps = []
+
+#         for building, bottle_count in building_count.items():
+#             c = Customers.objects.filter(building_name=building, routes=route).first()
+#             gps_longitude = c.gps_longitude
+#             gps_latitude = c.gps_latitude
+#             building_gps.append((building, gps_longitude, gps_latitude, bottle_count))
+
+#         sorted_building_gps = sorted(building_gps, key=lambda x: (x[1] if x[1] is not None else '', x[2] if x[2] is not None else ''))
+#         sorted_buildings = [item[0] for item in sorted_building_gps]
+#         sorted_building_count = dict(sorted(building_count.items(), key=lambda item: item[1]))
+
+#         trips = {}
+#         trip_count = 1
+#         current_trip_bottle_count = 0
+#         trip_buildings = []
+#         bottle_count = 0
+#         for building in sorted_buildings:
+          
+#             for building_data in sorted_building_gps:
+#                 if building_data[0]==building:
+#                     building = building_data[0]
+#                     if building_data[3]:
+#                         bottle_count = building_data[3]
+                        
+#                     if current_trip_bottle_count + bottle_count > van_capacity:
+#                         trip_buildings = [building]
+#                         trip_count+=1
+#                         trips[f"Trip{trip_count}"] = trip_buildings
+#                         # print(route,"trip",trip_count)
+#                         current_trip_bottle_count = bottle_count
+#                     else:
+                        
+#                         trip_buildings.append(building)
+#                         trips[f"Trip{trip_count}"] = trip_buildings
+#                         current_trip_bottle_count += bottle_count
+            
+        
+
+#         # Merge trips if possible to optimize
+#         merging_occurred = False
+#         for trip_num in range(1, trip_count + 1):
+#             for other_trip_num in range(trip_num + 1, trip_count + 1):
+#                 trip_key = f"Trip{trip_num}"
+#                 other_trip_key = f"Trip{other_trip_num}"
+#                 combined_buildings = trips.get(trip_key, []) + trips.get(other_trip_key, [])
+#                 total_bottles = sum(sorted_building_count.get(building, 0) for building in combined_buildings)
+#                 if total_bottles <= van_capacity:
+#                     trips[trip_key] = combined_buildings
+#                     del trips[other_trip_key]
+#                     merging_occurred = True
+#                     break
+#             if merging_occurred:  
+#                 break
+                    
+#         # List to store trip-wise customer details
+#         trip_customers = []
+#         location_name = ""
+#         for trip in trips:
+#             for building in trips[trip]:
+#                 for customer in todays_customers:
+#                     if customer.building_name == building:
+#                         if customer.location :
+#                             location_name = customer.location.location_name
+#                         trip_customer = {
+#                             "customer_name" : customer.customer_name,
+#                             "mobile":customer.mobile_no,
+#                             "trip":trip,
+#                             "building":customer.building_name,
+#                             "route" : customer.routes.route_name,
+#                             "no_of_bottles": customer.no_of_bottles_required,
+#                             "location" : location_name,
+#                             "building": customer.building_name,
+#                             "door_house_no": customer.door_house_no,
+#                             "floor_no": customer.floor_no,
+#                             "gps_longitude": customer.gps_longitude,
+#                             "gps_latitude": customer.gps_latitude,
+#                             "customer_type": customer.sales_type,
+#                             # 'rate': customer.rate,
+#                         }
+#                         if customer in emergency_customers:
+#                             trip_customer['type'] = 'Emergency'
+#                             dif = DiffBottlesModel.objects.filter(customer=customer, delivery_date=date).latest('created_date')
+#                             trip_customer['no_of_bottles'] = dif.quantity_required
+#                         else:
+#                             trip_customer['type'] = 'Default'
+#                         if customer.sales_type == 'CASH' or  customer.sales_type == 'CREDIT':
+#                             trip_customer['rate'] = customer.rate
+
+#                         trip_customers.append(trip_customer)
+#         return trip_customers
+
 def find_customers(request, def_date, route_id):
+    from datetime import datetime
     date_str = def_date
     if date_str:
         date = datetime.strptime(date_str, '%Y-%m-%d')
         day_of_week = date.strftime('%A')
         week_num = (date.day - 1) // 7 + 1
         week_number = f'Week{week_num}'
-    route = RouteMaster.objects.get(route_id=route_id)
+    
+    route = get_object_or_404(RouteMaster, route_id=route_id)
 
     van_route = Van_Routes.objects.filter(routes=route).first()
-    if van_route:
-        van_capacity = van_route.van.capacity
-    else:
-        van_capacity = 200
+    van_capacity = van_route.van.capacity if van_route else 200
+    
     todays_customers = []
-
     buildings = []
     for customer in Customers.objects.filter(routes=route):
         if customer.visit_schedule:
             for day, weeks in customer.visit_schedule.items():
-                if week_number in str(weeks):
-                    if str(day_of_week) in day:
-                        todays_customers.append(customer)
-                        buildings.append(customer.building_name)
-
+                if day in str(day_of_week) and week_number in str(weeks):
+                    todays_customers.append(customer)
+                    buildings.append(customer.building_name)
+                        
     # Customers on vacation
     date = datetime.strptime(def_date, '%Y-%m-%d').date()
     for vacation in Vacation.objects.all():
         if vacation.start_date <= date <= vacation.end_date:
             if vacation.customer in todays_customers:
                 todays_customers.remove(vacation.customer)
-
-    # Emergency customer
-    special_customers = DiffBottlesModel.objects.filter(delivery_date = date)
+   
+    # Emergency customers
+    special_customers = DiffBottlesModel.objects.filter(delivery_date=date)
     emergency_customers = []
     for client in special_customers:
         if client.customer in todays_customers:
@@ -473,103 +624,97 @@ def find_customers(request, def_date, route_id):
                 emergency_customers.append(client.customer)
                 if client.customer.building_name not in buildings:
                     buildings.append(client.customer.building_name)
-    co = 0
-    for cus in todays_customers:
-        if cus.no_of_bottles_required:
-            co+=cus.no_of_bottles_required
-    # print(route,co)
     
-    if not len(buildings) == 0:
-        building_count = {}
+    # Calculate total bottle count
+    co = sum(cus.no_of_bottles_required for cus in todays_customers)
+    # print(f"Total bottle count: {co}, Van capacity: {van_capacity}")
 
+    if buildings:
+        building_count = {}
         for building in buildings:
             for customer in todays_customers:
                 if customer.building_name == building:
-                    if building in building_count:
-                        building_count[building] += customer.no_of_bottles_required
-                    else:
-                        building_count[building] = customer.no_of_bottles_required
-
+                    building_count[building] = building_count.get(building, 0) + customer.no_of_bottles_required
 
         building_gps = []
-
         for building, bottle_count in building_count.items():
             c = Customers.objects.filter(building_name=building, routes=route).first()
-            gps_longitude = c.gps_longitude
-            gps_latitude = c.gps_latitude
-            building_gps.append((building, gps_longitude, gps_latitude, bottle_count))
+            building_gps.append((building, c.gps_longitude, c.gps_latitude, bottle_count))
 
+        # Sort buildings by GPS coordinates
         sorted_building_gps = sorted(building_gps, key=lambda x: (x[1] if x[1] is not None else '', x[2] if x[2] is not None else ''))
         sorted_buildings = [item[0] for item in sorted_building_gps]
-        sorted_building_count = dict(sorted(building_count.items(), key=lambda item: item[1]))
 
-        trips = {}
-        trip_count = 1
-        current_trip_bottle_count = 0
-        trip_buildings = []
-        bottle_count = 0
-        for building in sorted_buildings:
-          
-            for building_data in sorted_building_gps:
-                if building_data[0]==building:
-                    building = building_data[0]
-                    if building_data[3]:
-                        bottle_count = building_data[3]
-                        
-                    if current_trip_bottle_count + bottle_count > van_capacity:
-                        trip_buildings = [building]
-                        trip_count+=1
-                        trips[f"Trip{trip_count}"] = trip_buildings
-                        # print(route,"trip",trip_count)
-                        current_trip_bottle_count = bottle_count
-                    else:
-                        
-                        trip_buildings.append(building)
-                        trips[f"Trip{trip_count}"] = trip_buildings
-                        current_trip_bottle_count += bottle_count
-            
-        
+        # Check if total bottle count exceeds van capacity
+        if co <= van_capacity:
+            # All buildings can fit into one trip
+            trips = {"Trip1": sorted_buildings}
+        else:
+            # Initialize trips
+            trips = {}
+            trip_count = 1
+            current_trip_bottle_count = 0
+            trip_buildings = []
 
-        # Merge trips if possible to optimize
-        merging_occurred = False
-        for trip_num in range(1, trip_count + 1):
-            for other_trip_num in range(trip_num + 1, trip_count + 1):
-                trip_key = f"Trip{trip_num}"
-                other_trip_key = f"Trip{other_trip_num}"
-                combined_buildings = trips.get(trip_key, []) + trips.get(other_trip_key, [])
-                total_bottles = sum(sorted_building_count.get(building, 0) for building in combined_buildings)
-                if total_bottles <= van_capacity:
-                    trips[trip_key] = combined_buildings
-                    del trips[other_trip_key]
-                    merging_occurred = True
-                    break
-            if merging_occurred:  
-                break
-                    
+            for building in sorted_buildings:
+                bottle_count = building_count[building]
+                # print(f"Processing building: {building}, Bottle count: {bottle_count}, Current trip bottle count: {current_trip_bottle_count}")
+
+                if current_trip_bottle_count + bottle_count > van_capacity:
+                    # print(f"Creating new trip. Current trip bottle count ({current_trip_bottle_count}) + bottle count ({bottle_count}) exceeds van capacity ({van_capacity}).")
+                    trips[f"Trip{trip_count}"] = trip_buildings
+                    trip_count += 1
+                    trip_buildings = [building]
+                    current_trip_bottle_count = bottle_count
+                else:
+                    trip_buildings.append(building)
+                    current_trip_bottle_count += bottle_count
+
+            if trip_buildings:
+                trips[f"Trip{trip_count}"] = trip_buildings
+
+            # Merge trips if possible to optimize
+            merging_occurred = True
+            while merging_occurred:
+                merging_occurred = False
+                for trip_num in range(1, trip_count):
+                    for other_trip_num in range(trip_num + 1, trip_count + 1):
+                        trip_key = f"Trip{trip_num}"
+                        other_trip_key = f"Trip{other_trip_num}"
+                        if trip_key in trips and other_trip_key in trips:
+                            combined_buildings = trips[trip_key] + trips[other_trip_key]
+                            total_bottles = sum(building_count.get(building, 0) for building in combined_buildings)
+                            if total_bottles <= van_capacity:
+                                # print(f"Merging trips {trip_key} and {other_trip_key}. Combined bottle count: {total_bottles}")
+                                trips[trip_key] = combined_buildings
+                                del trips[other_trip_key]
+                                trip_count -= 1
+                                merging_occurred = True
+                                break
+                    if merging_occurred:
+                        break
+
         # List to store trip-wise customer details
         trip_customers = []
-        location_name = ""
-        for trip in trips:
-            for building in trips[trip]:
+        for trip, buildings in trips.items():
+            for building in buildings:
                 for customer in todays_customers:
                     if customer.building_name == building:
-                        if customer.location :
-                            location_name = customer.location.location_name
                         trip_customer = {
-                            "customer_name" : customer.customer_name,
-                            "mobile":customer.mobile_no,
-                            "trip":trip,
-                            "building":customer.building_name,
-                            "route" : customer.routes.route_name,
-                            "no_of_bottles": customer.no_of_bottles_required,
-                            "location" : location_name,
+                            "customer_id": customer.customer_id,
+                            "custom_id": customer.custom_id,
+                            "customer_name": customer.customer_name,
+                            "mobile": customer.mobile_no,
+                            "trip": trip,
                             "building": customer.building_name,
+                            "route": customer.routes.route_name,
+                            "no_of_bottles": customer.no_of_bottles_required,
+                            "location": customer.location.location_name if customer.location else "",
                             "door_house_no": customer.door_house_no,
                             "floor_no": customer.floor_no,
                             "gps_longitude": customer.gps_longitude,
                             "gps_latitude": customer.gps_latitude,
                             "customer_type": customer.sales_type,
-                            # 'rate': customer.rate,
                         }
                         if customer in emergency_customers:
                             trip_customer['type'] = 'Emergency'
@@ -577,7 +722,7 @@ def find_customers(request, def_date, route_id):
                             trip_customer['no_of_bottles'] = dif.quantity_required
                         else:
                             trip_customer['type'] = 'Default'
-                        if customer.sales_type == 'CASH' or  customer.sales_type == 'CREDIT':
+                        if customer.sales_type in ['CASH', 'CREDIT']:
                             trip_customer['rate'] = customer.rate
 
                         trip_customers.append(trip_customer)
@@ -1062,111 +1207,111 @@ class EditProductView(View):
         count = request.POST.get('count')
         stock_type = request.POST.get('stock_type')
         item = VanProductStock.objects.get(pk=pk)
-        print(stock_type)
-        print(count)
+        # print(stock_type)
+        # print(count)
         
-        # try:
-            # with transaction.atomic():
-        if item.product.product_name == "5 Gallon" and stock_type == "stock":
-            print("stock")
-            item.stock -= int(count)
-            item.save()
-            
-            product_stock = ProductStock.objects.get(branch=item.van.branch_id,product_name=item.product)
-            product_stock.quantity += int(count)
-            product_stock.save()
-            
-        elif item.product.product_name == "5 Gallon" and stock_type == "empty_can":
-            print("empty")
-            item.empty_can_count -= int(count)
-            item.save()
-            
-            emptycan=EmptyCanStock.objects.create(
-                product=item.product,
-                quantity=int(count)
-            )
-            emptycan.save()
-            
-        elif item.product.product_name == "5 Gallon" and stock_type == "return_count":
-            print("return")
-            scrap_count = int(request.POST.get('scrap_count'))
-            washing_count = int(request.POST.get('washing_count'))
-            
-            # print(scrap_count)
-            # print(washing_count)
-            
-            OffloadReturnStocks.objects.create(
-                created_by=request.user.id,
-                created_date=datetime.today(),
-                salesman=item.van.salesman,
-                van=item.van,
-                product=item.product,
-                scrap_count=scrap_count,
-                washing_count=washing_count
-            )
-            
-            if scrap_count > 0 :
-                if not ScrapProductStock.objects.filter(created_date__date=datetime.today().date(),product=item.product).exists():
-                    scrap_instance=ScrapProductStock.objects.create(created_by=request.user.id,created_date=datetime.today(),product=item.product)
-                else:
-                    scrap_instance=ScrapProductStock.objects.get(created_date__date=datetime.today().date(),product=item.product)
-                scrap_instance.quantity = scrap_count
-                scrap_instance.save()
-            
-            if washing_count > 0 :
-                if not WashingProductStock.objects.filter(created_date__date=datetime.today().date(),product=item.product).exists():
-                    washing_instance=WashingProductStock.objects.create(created_by=request.user.id,created_date=datetime.today(),product=item.product)
-                else:
-                    washing_instance=WashingProductStock.objects.get(created_date__date=datetime.today().date(),product=item.product)
-                washing_instance.quantity = washing_count
-                washing_instance.save()
+        try:
+            with transaction.atomic():
+                if item.product.product_name == "5 Gallon" and stock_type == "stock":
+                    print("stock")
+                    item.stock -= int(count)
+                    item.save()
+                    
+                    product_stock = ProductStock.objects.get(branch=item.van.branch_id,product_name=item.product)
+                    product_stock.quantity += int(count)
+                    product_stock.save()
+                    
+                elif item.product.product_name == "5 Gallon" and stock_type == "empty_can":
+                    print("empty")
+                    item.empty_can_count -= int(count)
+                    item.save()
+                    
+                    emptycan=EmptyCanStock.objects.create(
+                        product=item.product,
+                        quantity=int(count)
+                    )
+                    emptycan.save()
+                    
+                elif item.product.product_name == "5 Gallon" and stock_type == "return_count":
+                    print("return")
+                    scrap_count = int(request.POST.get('scrap_count'))
+                    washing_count = int(request.POST.get('washing_count'))
+                    
+                    # print(scrap_count)
+                    # print(washing_count)
+                    
+                    OffloadReturnStocks.objects.create(
+                        created_by=request.user.id,
+                        created_date=datetime.today(),
+                        salesman=item.van.salesman,
+                        van=item.van,
+                        product=item.product,
+                        scrap_count=scrap_count,
+                        washing_count=washing_count
+                    )
+                    
+                    if scrap_count > 0 :
+                        if not ScrapProductStock.objects.filter(created_date__date=datetime.today().date(),product=item.product).exists():
+                            scrap_instance=ScrapProductStock.objects.create(created_by=request.user.id,created_date=datetime.today(),product=item.product)
+                        else:
+                            scrap_instance=ScrapProductStock.objects.get(created_date__date=datetime.today().date(),product=item.product)
+                        scrap_instance.quantity = scrap_count
+                        scrap_instance.save()
+                    
+                    if washing_count > 0 :
+                        if not WashingProductStock.objects.filter(created_date__date=datetime.today().date(),product=item.product).exists():
+                            washing_instance=WashingProductStock.objects.create(created_by=request.user.id,created_date=datetime.today(),product=item.product)
+                        else:
+                            washing_instance=WashingProductStock.objects.get(created_date__date=datetime.today().date(),product=item.product)
+                        washing_instance.quantity = washing_count
+                        washing_instance.save()
+                        
+                    count = scrap_count + washing_count
+                    # print(count)
+                    item.return_count -= int(count)
+                    item.save()
+                    
+                else : 
+                    print("else")
+                    item.stock -= int(count)
+                    item.save()
+                    
+                    product_stock = ProductStock.objects.get(branch=item.van.branch_id,product_name=item.product)
+                    product_stock.quantity += int(count)
+                    product_stock.save()
                 
-            count = scrap_count + washing_count
-            # print(count)
-            item.return_count -= int(count)
-            item.save()
-            
-        else : 
-            print("else")
-            item.stock -= int(count)
-            item.save()
-            
-            product_stock = ProductStock.objects.get(branch=item.van.branch_id,product_name=item.product)
-            product_stock.quantity += int(count)
-            product_stock.save()
-        
-        Offload.objects.create(
-            created_by=request.user.id,
-            created_date=datetime.today(),
-            salesman=item.van.salesman,
-            van=item.van,
-            product=item.product,
-            quantity=int(count),
-            stock_type=stock_type
-        )
-        
-        response_data = {
-            "status": "true",
-            "title": "Successfully Offloaded",
-            "message": "Offload successfully.",
-            'reload': 'true',
-        }
+                Offload.objects.create(
+                    created_by=request.user.id,
+                    created_date=datetime.today(),
+                    salesman=item.van.salesman,
+                    van=item.van,
+                    product=item.product,
+                    quantity=int(count),
+                    stock_type=stock_type
+                )
                 
-        # except IntegrityError as e:
-        #     # Handle database integrity error
-        #     response_data = {
-        #         "status": "false",
-        #         "title": "Failed",
-        #         "message": str(e),
-        #     }
+                response_data = {
+                    "status": "true",
+                    "title": "Successfully Offloaded",
+                    "message": "Offload successfully.",
+                    'reload': 'true',
+                }
+                
+        except IntegrityError as e:
+            # Handle database integrity error
+            response_data = {
+                "status": "false",
+                "title": "Failed",
+                "message": str(e),
+            }
 
-        # except Exception as e:
-        #     # Handle other exceptions
-        #     response_data = {
-        #         "status": "false",
-        #         "title": "Failed",
-        #         "message": str(e),
-        #     }
+        except Exception as e:
+            # Handle other exceptions
+            response_data = {
+                "status": "false",
+                "title": "Failed",
+                "message": str(e),
+            }
             
         return HttpResponse(json.dumps(response_data), content_type='application/javascript')
             
@@ -1281,86 +1426,6 @@ def EditBottleAllocation(request, route_id=None):
 
     return render(request, 'van_management/edit_bottle_allocation.html', context)
 
-def VansRouteBottleCount(request):
-    date = request.GET.get('date')
-    print(date, 'date')
-    if date:
-        date = datetime.strptime(date, '%Y-%m-%d').date()
-    else:
-        date = datetime.today().date()
-
-    van_details = []
-
-    all_vans = Van.objects.all()
-    for van in all_vans:
-        # Get the van's route, default to 'No route' if none found
-        van_route = Van_Routes.objects.filter(van=van).first()
-        route_name = van_route.routes.route_name if van_route else 'No route'
-        
-        # Get the bottle count directly from the Van model
-        bottle_count = van.bottle_count
-
-        van_details.append({
-            'route': route_name,
-            'bottle_count': bottle_count,
-            'van_id': van.van_id
-        })
-
-    context = {
-        'van_details': van_details,
-        'date': date,
-        # 'all_vans' :all_vans
-    }
-    return render(request, 'van_management/van_route_bottle_count.html', context)
-
-def VansRouteBottleCountAdd(request, van_id):
-    van = get_object_or_404(Van, van_id=van_id)
-    
-    if request.method == 'POST':
-        form = VansRouteBottleCountAddForm(request.POST)
-        if form.is_valid():
-            bottle_count = form.save(commit=False)
-            bottle_count.van = van
-            bottle_count.created_by = request.user.username
-            bottle_count.save()
-
-            # Update the bottle_count field in the Van model
-            van.bottle_count += form.cleaned_data['qty_issued']
-            van.save()
-
-            return redirect('vans_route_bottle_count')  # Redirect to your bottle count report view
-    else:
-        form = VansRouteBottleCountAddForm()
-
-    context = {
-        'form': form,
-        'van': van,
-    }
-    return render(request,'van_management/van_route_bottle_count_add.html', context)
-def VansRouteBottleCountDeduct(request, van_id):
-    van = get_object_or_404(Van, van_id=van_id)
-    
-    if request.method == 'POST':
-        form = VansRouteBottleCountDeductForm(request.POST)
-        if form.is_valid():
-            bottle_count = form.save(commit=False)
-            bottle_count.van = van
-            bottle_count.created_by = request.user.username
-            bottle_count.save()
-
-            # Deduct the bottle_count field in the Van model
-            van.bottle_count -= form.cleaned_data['qty_deducted']
-            van.save()
-
-            return redirect('vans_route_bottle_count')  # Redirect to your bottle count report view
-    else:
-        form = VansRouteBottleCountDeductForm()
-
-    context = {
-        'form': form,
-        'van': van,
-    }
-    return render(request, 'van_management/van_route_bottle_count_deduct.html', context)
 
 
 class VanCouponStockList(View):
